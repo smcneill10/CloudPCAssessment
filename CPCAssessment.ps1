@@ -9,7 +9,7 @@ Connect-MgGraph -Scopes "CloudPC.ReadWrite.All, User.Read.All","Group.Read.All, 
 #Select-MgProfile Beta
 
 #Gathers the connection info, comment out the Clear-Host line below to see this info, helps with connectivity issues
-Write-host "Here is the connection information used:" -BackgroundColor $BKColorInfo -ForegroundColor $FGColor
+Write-host "Here is the connection information used:" #-BackgroundColor $BKColorInfo -ForegroundColor $FGColor
 Get-MgContext
 #Clear-Host
 
