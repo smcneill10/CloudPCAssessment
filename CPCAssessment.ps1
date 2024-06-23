@@ -1,6 +1,7 @@
 # Need to have PowerShell 7 or higher https://learn.microsoft.com/en-us/powershell/scripting/install/installing-powershell?view=powershell-7.3
 
-
+Install-Module -Name Microsoft.Graph.Authentication -Force
+Install-Module -Name Microsoft.Graph.PowerShell -Force
 
 
 #Connect to CloudPC Graph API 
