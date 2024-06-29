@@ -18,7 +18,7 @@ $BKColorGood = "Green"
 $BKColorinfo = "black"
 
 #Import the required modules - V1.0 versus Beta
-#Import-Module Microsoft.Graph.DeviceManagement.Administration -Force 
+Import-Module Microsoft.Graph.DeviceManagement.Administration -Force 
 Import-Module Microsoft.Graph.beta.DeviceManagement.Administration -Force 
 #import-Module -Name Microsoft.Graph -Force -AllowClobber
 
@@ -35,12 +35,19 @@ Get-MgContext
 Function Get-CloudPCData  
     {
     write-host "" -BackgroundColor $BKColorInfo -ForegroundColor $FGColor
-    # get all CPCs using V1.0 API version
-    #$CPCs = Get-MgDeviceManagementVirtualEndpointCloudPc -Property DisplayName, UserPrincipalName, ManagedDeviceName, ID, ProvisioningPolicyId, ProvisioningPolicyName, ImageDisplayName, ServicePlanName
-    
-    # get all CPCs using Beta API version
-    $CPCs = Get-MgBetaDeviceManagementVirtualEndpointCloudPc -Property DisplayName, UserPrincipalName, ManagedDeviceName, ID, ProvisioningPolicyId, ProvisioningPolicyName, ImageDisplayName, ServicePlanName, Status, PowerState
-   
+    Write-host "Enter 1 for API V1.0 and 2 for API Beta" -BackgroundColor $BKColorInfo -ForegroundColor $FGColor
+
+    [int]$APIVersion = Read-Host "Enter your selection"
+    If ($APIVersion -eq 1) 
+        {Write-Host "Using API V1.0" -BackgroundColor $BKColorInfo -ForegroundColor $FGColor
+        #get all CPCs using V1.0 API version
+        $CPCs = Get-MgDeviceManagementVirtualEndpointCloudPc -Property DisplayName, UserPrincipalName, ManagedDeviceName, ID, ProvisioningPolicyId, ProvisioningPolicyName, ImageDisplayName, ServicePlanName
+        }
+    Else 
+        {Write-Host "Using API Beta" -BackgroundColor $BKColorInfo -ForegroundColor $FGColor
+        # get all CPCs using Beta API version
+        $CPCs = Get-MgBetaDeviceManagementVirtualEndpointCloudPc -Property DisplayName, UserPrincipalName, ManagedDeviceName, ID, ProvisioningPolicyId, ProvisioningPolicyName, ImageDisplayName, ServicePlanName, Status, PowerState
+        }
     $Counter = 0
     # cycle thru all CPCs and display info
     foreach ($CPC in $CPCs)
