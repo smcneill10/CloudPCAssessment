@@ -17,8 +17,8 @@ $BKColorBad = "Red"
 $BKColorGood = "Green"
 $BKColorinfo = "black"
 
-#Import the required modules
-Import-Module Microsoft.Graph.DeviceManagement.Administration -Force 
+#Import the required modules - V1.0 versus Beta
+#Import-Module Microsoft.Graph.DeviceManagement.Administration -Force 
 Import-Module Microsoft.Graph.beta.DeviceManagement.Administration -Force 
 #import-Module -Name Microsoft.Graph -Force -AllowClobber
 
