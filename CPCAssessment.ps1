@@ -10,6 +10,9 @@
 #Arm
 # https://learn.microsoft.com/en-us/powershell/scripting/install/powershell-on-arm?view=powershell-7.4
 
+#Entra ID Powershell info
+#https://techcommunity.microsoft.com/t5/microsoft-entra-blog/introducing-the-microsoft-entra-powershell-module/ba-p/4173546
+
 #Display Preferences
 $FGColor = "white"
 $BKColor = "Black"
