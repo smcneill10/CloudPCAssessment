@@ -17,7 +17,7 @@
 $FGColor = "white"
 $BKColor = "Black"
 $BKColorBad = "Red"
-$BKColorGood = "Green"
+#$BKColorGood = "Green"
 $BKColorinfo = "black"
 
 #Import the required modules - V1.0 versus Beta
