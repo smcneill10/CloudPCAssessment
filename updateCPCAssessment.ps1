@@ -159,6 +159,28 @@ function Show-CloudPCMenu {
     )
     
     Write-Host ""
+    # Prompt user for list or search option
+    Write-ColorMessage "Display Options:" -Type Info
+    Write-Host "  [1] List all Cloud PCs"
+    Write-Host "  [2] Search by UserPrincipalName"
+    Write-Host ""
+    $displayOption = Read-Host "Select display option"
+
+    if ($displayOption -eq '2') {
+        $searchUPN = Read-Host "Enter UserPrincipalName to search"
+        $CloudPCs = @($CloudPCs | Where-Object { $_.UserPrincipalName -like "*$searchUPN*" })
+        
+        if ($CloudPCs.Count -eq 0) {
+            Write-ColorMessage "No Cloud PCs found for user: $searchUPN" -Type Warning
+            Start-Sleep -Seconds 2
+            return
+        }
+        
+        Write-ColorMessage "Found $($CloudPCs.Count) Cloud PC(s) for search: $searchUPN" -Type Success
+        
+        Write-Host ""
+    }
+
     Write-ColorMessage "=== Available Cloud PCs ===" -Type Info
     Write-Host ""
     
