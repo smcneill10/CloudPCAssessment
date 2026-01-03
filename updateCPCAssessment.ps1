@@ -167,7 +167,7 @@ function Show-CloudPCMenu {
         $index = $i + 1
         $displayName = $cpc.ManagedDeviceName ?? $cpc.DisplayName
         $user = $cpc.UserPrincipalName
-        $powerState = $cpc.PowerState ?? "Unknown"
+        $powerState = $cpc.PowerState ?? "unknown"
         $status = $cpc.Status ?? "Unknown"
         
         # Color code based on power state
