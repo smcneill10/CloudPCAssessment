@@ -131,7 +131,8 @@ function Get-CloudPCList {
         Write-ColorMessage "Retrieving Cloud PCs..." -Type Info
         
         # Using Beta API for full feature set (PowerState, Status, etc.)
-        $cloudPCs = Get-MgBetaDeviceManagementVirtualEndpointCloudPc -All -ErrorAction Stop
+        $props = "id,displayName,powerState,status,userPrincipalName,managedDeviceName,servicePlanName,imageDisplayName,provisioningPolicyName,lastModifiedDateTime,gracePeriodEndDateTime"
+        $cloudPCs = Get-MgBetaDeviceManagementVirtualEndpointCloudPc -property $props -All -ErrorAction Stop
         
         if ($null -eq $cloudPCs -or $cloudPCs.Count -eq 0) {
             Write-ColorMessage "No Cloud PCs found in this tenant" -Type Warning
@@ -335,7 +336,7 @@ function Start-CloudPCManagement {
     )
     
     do {
-        Clear-Host
+        #Clear-Host
         Show-CloudPCMenu -CloudPCs $CloudPCs
         
         $selection = Read-Host "Select a Cloud PC (0 to exit)"
@@ -351,7 +352,7 @@ function Start-CloudPCManagement {
             
             # Inner loop for selected Cloud PC
             do {
-                Clear-Host
+               # Clear-Host
                 Show-CloudPCDetails -CloudPC $selectedCloudPC
                 Show-ActionMenu
                 
