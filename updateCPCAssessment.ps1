@@ -160,11 +160,11 @@ function Show-CloudPCMenu {
     
     Write-Host ""
     # Prompt user for list or search option
-    Write-ColorMessage "Display Options:" -Type Info
+    Write-ColorMessage "How do you want to locate a Cloud PC:" -Type Info
     Write-Host "  [1] List all Cloud PCs"
     Write-Host "  [2] Search by UserPrincipalName"
     Write-Host ""
-    $displayOption = Read-Host "Select display option"
+    $displayOption = Read-Host "Select locate option"
 
     if ($displayOption -eq '2') {
         $searchUPN = Read-Host "Enter UserPrincipalName to search"
@@ -177,7 +177,7 @@ function Show-CloudPCMenu {
         }
         
         Write-ColorMessage "Found $($CloudPCs.Count) Cloud PC(s) for search: $searchUPN" -Type Success
-        
+
         Write-Host ""
     }
 
@@ -189,22 +189,25 @@ function Show-CloudPCMenu {
         $index = $i + 1
         $displayName = $cpc.ManagedDeviceName ?? $cpc.DisplayName
         $user = $cpc.UserPrincipalName
-        $powerState = $cpc.PowerState ?? "unknown"
-        $status = $cpc.Status ?? "Unknown"
+        $powerState = $cpc.PowerState 
+        $status = $cpc.Status 
         
         # Color code based on power state
-        $stateColor = switch ($powerState) {
+        <#
+         # {$stateColor = switch ($powerState) {
             'running' { 'Success' }
             'stopped' { 'Warning' }
             'poweredOff' { 'Warning' }
             default { 'Normal' }
-        }
+        }:Enter a comment or description}
+        #>
         
         Write-Host "  [$index] " -NoNewline
         Write-Host "$displayName " -ForegroundColor White -NoNewline
         Write-Host "| User: $user " -ForegroundColor Gray -NoNewline
         Write-Host "| Status: $status " -ForegroundColor Cyan -NoNewline
-        Write-ColorMessage "| Power: $powerState" -Type $stateColor
+       # Write-ColorMessage "| Power: $powerState -Type $stateColor
+       Write-host "| Power: $powerState" -ForegroundColor Red
     }
     
     Write-Host ""
