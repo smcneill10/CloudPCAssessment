@@ -25,10 +25,27 @@
 #>
 
 #Requires -Version 7.0
-#Requires -Modules Microsoft.Graph.Authentication, Microsoft.Graph.Beta.DeviceManagement.Administration
 
 [CmdletBinding()]
 param()
+
+#region Module Check
+# Verify required modules are installed (PowerShell will auto-load them when needed)
+$requiredModules = @(
+    'Microsoft.Graph.Authentication'
+    'Microsoft.Graph.Beta.DeviceManagement.Administration'
+)
+
+foreach ($module in $requiredModules) {
+    if (-not (Get-Module -Name $module -ListAvailable)) {
+        Write-Warning "Required module '$module' is not installed."
+        Write-Host "Install it with: Install-Module -Name $module -Scope CurrentUser -Force" -ForegroundColor Yellow
+        exit 1
+    }
+}
+
+Write-Verbose "All required modules are available. PowerShell will auto-load them as needed."
+#endregion
 
 #region Configuration
 $script:Config = @{
