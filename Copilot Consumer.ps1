@@ -27,12 +27,13 @@
 #>
 
 # -------------------------------------------------------------------------------------------------
-# Import the Microsoft Graph module.
-# If not installed, instruct the user to install it.
+# Import the required Microsoft Graph modules.
+# If not installed, instruct the user to install them.
 try {
-    Import-Module Microsoft.Graph -ErrorAction Stop
+    Import-Module Microsoft.Graph.Authentication -ErrorAction Stop
+    Import-Module Microsoft.Graph.DeviceManagement -ErrorAction Stop
 } catch {
-    Write-Error "The Microsoft.Graph module is not installed. Please run `Install-Module Microsoft.Graph -Scope CurrentUser` and try again."
+    Write-Error "The required Microsoft Graph modules are not installed. Please run 'Install-Module Microsoft.Graph.Authentication, Microsoft.Graph.DeviceManagement -Scope CurrentUser' and try again."
     exit
 }
 
@@ -53,7 +54,7 @@ function Initialize-Windows365Session {
     #>
     Write-Output "Connecting to Microsoft Graph..."
     try {
-        Connect-MgGraph -Scopes "DeviceManagementManagedDevices.ReadWrite.All" -ErrorAction Stop
+        Connect-MgGraph -Scopes "CloudPC.ReadWrite.All" -NoWelcome -ErrorAction Stop
         Write-Output "Successfully connected to Microsoft Graph."
     } catch {
         Write-Error "Failed to connect to Microsoft Graph. Please verify your credentials and permission scopes."
@@ -62,36 +63,33 @@ function Initialize-Windows365Session {
 }
 
 # -------------------------------------------------------------------------------------------------
-# Function: Reboot-EnterpriseCPC
-# This function reboots an Enterprise Cloud PC identified by its unique ID.
-function Reboot-EnterpriseCPC {
+# Function: Restart-EnterpriseCPC
+# This function restarts an Enterprise Cloud PC identified by its unique ID.
+function Restart-EnterpriseCPC {
     <#
     .SYNOPSIS
-        Reboots an Enterprise Cloud PC.
+        Restarts an Enterprise Cloud PC.
         
     .DESCRIPTION
-        Sends a reboot command to the specified Enterprise Cloud PC via the Microsoft Graph API.
-        Replace <CloudPCId> with the appropriate identifier of the target Cloud PC.
+        Sends a restart command to the specified Enterprise Cloud PC using the Microsoft Graph PowerShell SDK.
         
     .PARAMETER CloudPCId
-        The unique identifier of the Enterprise Cloud PC to be rebooted.
+        The unique identifier of the Enterprise Cloud PC to be restarted.
         
     .EXAMPLE
-        Reboot-EnterpriseCPC -CloudPCId "12345-abcd"
+        Restart-EnterpriseCPC -CloudPCId "12345-abcd"
     #>
     param (
         [Parameter(Mandatory = $true)]
         [string]$CloudPCId
     )
 
-    # Construct the endpoint URI.
-    $uri = "https://graph.microsoft.com/v1.0/deviceManagement/windows365CloudPCs/$CloudPCId/reboot"
-    Write-Output "Attempting to reboot Enterprise Cloud PC with ID: $CloudPCId"
+    Write-Output "Attempting to restart Enterprise Cloud PC with ID: $CloudPCId"
     try {
-        Invoke-MgGraphRequest -Method POST -Uri $uri -ErrorAction Stop
-        Write-Output "Reboot command issued successfully for Cloud PC ID: $CloudPCId"
+        Restart-MgDeviceManagementVirtualEndpointCloudPc -CloudPcId $CloudPCId -ErrorAction Stop
+        Write-Output "Restart command issued successfully for Cloud PC ID: $CloudPCId"
     } catch {
-        Write-Error "Failed to reboot Cloud PC ID: $CloudPCId. Error details: $_"
+        Write-Error "Failed to restart Cloud PC ID: $CloudPCId. Error details: $_"
     }
 }
 
@@ -117,10 +115,9 @@ function Start-FrontlineDedicatedCPC {
         [string]$CloudPCId
     )
     
-    $uri = "https://graph.microsoft.com/v1.0/deviceManagement/windows365CloudPCs/$CloudPCId/start"
     Write-Output "Attempting to start Frontline Dedicated Cloud PC with ID: $CloudPCId"
     try {
-        Invoke-MgGraphRequest -Method POST -Uri $uri -ErrorAction Stop
+        Start-MgDeviceManagementVirtualEndpointCloudPc -CloudPcId $CloudPCId -ErrorAction Stop
         Write-Output "Start command issued successfully for Cloud PC ID: $CloudPCId"
     } catch {
         Write-Error "Failed to start Cloud PC ID: $CloudPCId. Error details: $_"
@@ -149,10 +146,9 @@ function Stop-FrontlineDedicatedCPC {
         [string]$CloudPCId
     )
     
-    $uri = "https://graph.microsoft.com/v1.0/deviceManagement/windows365CloudPCs/$CloudPCId/stop"
     Write-Output "Attempting to stop Frontline Dedicated Cloud PC with ID: $CloudPCId"
     try {
-        Invoke-MgGraphRequest -Method POST -Uri $uri -ErrorAction Stop
+        Stop-MgDeviceManagementVirtualEndpointCloudPc -CloudPcId $CloudPCId -ErrorAction Stop
         Write-Output "Stop command issued successfully for Cloud PC ID: $CloudPCId"
     } catch {
         Write-Error "Failed to stop Cloud PC ID: $CloudPCId. Error details: $_"
@@ -160,64 +156,62 @@ function Stop-FrontlineDedicatedCPC {
 }
 
 # -------------------------------------------------------------------------------------------------
-# Function: Reboot-FrontlineDedicatedCPC
-# This function reboots a Frontline Dedicated Cloud PC via its unique ID.
-function Reboot-FrontlineDedicatedCPC {
+# Function: Restart-FrontlineDedicatedCPC
+# This function restarts a Frontline Dedicated Cloud PC via its unique ID.
+function Restart-FrontlineDedicatedCPC {
     <#
     .SYNOPSIS
-        Reboots a Frontline Dedicated Cloud PC.
+        Restarts a Frontline Dedicated Cloud PC.
         
     .DESCRIPTION
-        Issues a reboot command using the Microsoft Graph API to the specified Frontline Dedicated Cloud PC.
+        Issues a restart command using the Microsoft Graph PowerShell SDK to the specified Frontline Dedicated Cloud PC.
         
     .PARAMETER CloudPCId
-        The unique identifier of the Frontline Dedicated Cloud PC to reboot.
+        The unique identifier of the Frontline Dedicated Cloud PC to restart.
         
     .EXAMPLE
-        Reboot-FrontlineDedicatedCPC -CloudPCId "67890-efgh"
+        Restart-FrontlineDedicatedCPC -CloudPCId "67890-efgh"
     #>
     param (
         [Parameter(Mandatory = $true)]
         [string]$CloudPCId
     )
     
-    $uri = "https://graph.microsoft.com/v1.0/deviceManagement/windows365CloudPCs/$CloudPCId/reboot"
-    Write-Output "Attempting to reboot Frontline Dedicated Cloud PC with ID: $CloudPCId"
+    Write-Output "Attempting to restart Frontline Dedicated Cloud PC with ID: $CloudPCId"
     try {
-        Invoke-MgGraphRequest -Method POST -Uri $uri -ErrorAction Stop
-        Write-Output "Reboot command issued successfully for Cloud PC ID: $CloudPCId"
+        Restart-MgDeviceManagementVirtualEndpointCloudPc -CloudPcId $CloudPCId -ErrorAction Stop
+        Write-Output "Restart command issued successfully for Cloud PC ID: $CloudPCId"
     } catch {
-        Write-Error "Failed to reboot Cloud PC ID: $CloudPCId. Error details: $_"
+        Write-Error "Failed to restart Cloud PC ID: $CloudPCId. Error details: $_"
     }
 }
 
 # -------------------------------------------------------------------------------------------------
-# Function: Reprovision-FrontlineSharedCPC
+# Function: Invoke-FrontlineSharedCPCReprovision
 # This function reprovisions a Frontline Shared Cloud PC identified by its unique ID.
-function Reprovision-FrontlineSharedCPC {
+function Invoke-FrontlineSharedCPCReprovision {
     <#
     .SYNOPSIS
         Reprovisions a Frontline Shared Cloud PC.
         
     .DESCRIPTION
-        Initiates the reprovision process using the Microsoft Graph API to essentially reset the
+        Initiates the reprovision process using the Microsoft Graph PowerShell SDK to essentially reset the
         specified Frontline Shared Cloud PC.
         
     .PARAMETER CloudPCId
         The unique identifier of the Frontline Shared Cloud PC to reprovision.
         
     .EXAMPLE
-        Reprovision-FrontlineSharedCPC -CloudPCId "abcdef-12345"
+        Invoke-FrontlineSharedCPCReprovision -CloudPCId "abcdef-12345"
     #>
     param (
         [Parameter(Mandatory = $true)]
         [string]$CloudPCId
     )
     
-    $uri = "https://graph.microsoft.com/v1.0/deviceManagement/windows365CloudPCs/$CloudPCId/reprovision"
     Write-Output "Attempting to reprovision Frontline Shared Cloud PC with ID: $CloudPCId"
     try {
-        Invoke-MgGraphRequest -Method POST -Uri $uri -ErrorAction Stop
+        Invoke-MgReprovisionDeviceManagementVirtualEndpointCloudPc -CloudPcId $CloudPCId -ErrorAction Stop
         Write-Output "Reprovision command issued successfully for Cloud PC ID: $CloudPCId"
     } catch {
         Write-Error "Failed to reprovision Cloud PC ID: $CloudPCId. Error details: $_"
@@ -230,10 +224,10 @@ function Show-Menu {
     Write-Host "======================================"
     Write-Host "Windows 365 Cloud PC Management Script"
     Write-Host "======================================"
-    Write-Host "1. Reboot Enterprise Cloud PC"
+    Write-Host "1. Restart Enterprise Cloud PC"
     Write-Host "2. Start Frontline Dedicated Cloud PC"
     Write-Host "3. Stop Frontline Dedicated Cloud PC"
-    Write-Host "4. Reboot Frontline Dedicated Cloud PC"
+    Write-Host "4. Restart Frontline Dedicated Cloud PC"
     Write-Host "5. Reprovision Frontline Shared Cloud PC"
     Write-Host "6. Exit"
 }
@@ -249,8 +243,8 @@ try {
         $choice = Read-Host "Enter your selection (1-6)"
         switch ($choice) {
             "1" {
-                $cloudPCId = Read-Host "Enter the Enterprise Cloud PC ID to reboot"
-                Reboot-EnterpriseCPC -CloudPCId $cloudPCId
+                $cloudPCId = Read-Host "Enter the Enterprise Cloud PC ID to restart"
+                Restart-EnterpriseCPC -CloudPCId $cloudPCId
             }
             "2" {
                 $cloudPCId = Read-Host "Enter the Frontline Dedicated Cloud PC ID to start"
@@ -261,12 +255,12 @@ try {
                 Stop-FrontlineDedicatedCPC -CloudPCId $cloudPCId
             }
             "4" {
-                $cloudPCId = Read-Host "Enter the Frontline Dedicated Cloud PC ID to reboot"
-                Reboot-FrontlineDedicatedCPC -CloudPCId $cloudPCId
+                $cloudPCId = Read-Host "Enter the Frontline Dedicated Cloud PC ID to restart"
+                Restart-FrontlineDedicatedCPC -CloudPCId $cloudPCId
             }
             "5" {
                 $cloudPCId = Read-Host "Enter the Frontline Shared Cloud PC ID to reprovision"
-                Reprovision-FrontlineSharedCPC -CloudPCId $cloudPCId
+                Invoke-FrontlineSharedCPCReprovision -CloudPCId $cloudPCId
             }
             "6" {
                 Write-Host "Exiting the script. Goodbye!"
