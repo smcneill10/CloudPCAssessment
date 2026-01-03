@@ -48,10 +48,34 @@ function Initialize-Windows365Session {
     .DESCRIPTION
         Uses the Connect-MgGraph cmdlet with the required permission scope to ensure that
         operations such as reboot, start, stop, and reprovision can be successfully issued.
+     #>
+            # Script configuration
+        $ErrorActionPreference = 'Stop'
+        $ProgressPreference = 'SilentlyContinue'
         
+        # Import required modules
+        try {
+            Import-Module Microsoft.Graph.Authentication -ErrorAction Stop
+            Import-Module Microsoft.Graph.DeviceManagement.Administration -ErrorAction Stop
+            Write-Verbose "Required modules loaded successfully"
+        }
+        catch {
+            Write-Error "Failed to load required modules. Please install them using: Install-Module Microsoft.Graph.Authentication, Microsoft.Graph.DeviceManagement.Administration -Scope CurrentUser"
+            exit 1
+        }
+        
+        # Display theme configuration
+        $script:DisplayConfig = @{
+            ForegroundColor = 'White'
+            InfoBackground = 'DarkBlue'
+            SuccessBackground = 'DarkGreen'
+            ErrorBackground = 'DarkRed'
+            WarningBackground = 'DarkYellow'
+        }    
+
     .EXAMPLE
         Initialize-Windows365Session
-    #>
+    
     Write-Output "Connecting to Microsoft Graph..."
     try {
         Connect-MgGraph -Scopes "CloudPC.ReadWrite.All" -NoWelcome -ErrorAction Stop
