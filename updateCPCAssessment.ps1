@@ -33,7 +33,8 @@ param()
 # Verify required modules are installed (PowerShell will auto-load them when needed)
 $requiredModules = @(
     'Microsoft.Graph.Authentication'
-    'Microsoft.Graph.Beta.DeviceManagement.Administration'
+    'Microsoft.Graph.Beta.DeviceManagement'
+    'Microsoft.Graph.DeviceManagement'
 )
 
 foreach ($module in $requiredModules) {
@@ -110,7 +111,10 @@ function Initialize-GraphConnection {
         Write-ColorMessage "Account: $($context.Account)" -Type Info
         Write-ColorMessage "Tenant: $($context.TenantId)" -Type Info
         Write-Host ""
-        
+       # Get-Module -ListAvailable Microsoft.Graph.Beta.DeviceManagement* | Import-Module
+       # Get-Module -ListAvailable Microsoft.Graph.DeviceManagement* | Import-Module
+        $modules = Get-Module
+        Write-host $modules
         return $true
     }
     catch {
@@ -194,21 +198,21 @@ function Show-CloudPCMenu {
         $status = $cpc.Status 
         
         # Color code based on power state
-        <#
-         # {$stateColor = switch ($powerState) {
+        
+         $stateColor = switch ($powerState) {
             'running' { 'Success' }
             'stopped' { 'Warning' }
             'poweredOff' { 'Warning' }
             default { 'Normal' }
-        }:Enter a comment or description}
-        #>
+        }
+        
         
         Write-Host "  [$index] " -NoNewline
         Write-Host "$displayName " -ForegroundColor White -NoNewline
         Write-Host "| User: $user " -ForegroundColor Gray -NoNewline
         Write-Host "| Status: $status " -ForegroundColor Cyan -NoNewline
-       # Write-ColorMessage "| Power: $powerState -Type $stateColor
-       Write-host "| Power: $powerState" -ForegroundColor Red
+       Write-ColorMessage "| Power: $powerState " -Type $stateColor
+     #Write-host "| Power: $powerState" -ForegroundColor Red
     }
     
     Write-Host ""
@@ -267,7 +271,8 @@ function Show-ActionMenu {
     Write-ColorMessage "=== Available Actions ===" -Type Info
     Write-Host ""
     Write-Host "  [1] Start Cloud PC"
-    Write-Host "  [2] Stop Cloud PC"
+   # Write-Host "  [2] Stop Cloud PC"
+    Write-Host "  [2] Feature currently not available"
     Write-Host "  [3] Restart Cloud PC"
     Write-Host "  [4] Refresh Details"
     Write-Host "  [5] Back to Cloud PC List"
@@ -293,22 +298,24 @@ function Invoke-CloudPCAction {
         switch ($Action) {
             '1' {
                 Write-ColorMessage "Starting Cloud PC: $($CloudPC.DisplayName)..." -Type Info
-                Start-MgBetaDeviceManagementVirtualEndpointCloudPc -CloudPcId $CloudPC.Id -ErrorAction Stop
+                Restart-MgDeviceManagementVirtualEndpointCloudPc -CloudPcId $CloudPC.Id -ErrorAction Stop
                 Write-ColorMessage "Start command sent successfully" -Type Success
             }
-            '2' {
+<#
+ # {            '2' {
                 Write-ColorMessage "Stopping Cloud PC: $($CloudPC.DisplayName)..." -Type Warning
-                Stop-MgBetaDeviceManagementVirtualEndpointCloudPc -CloudPcId $CloudPC.Id -ErrorAction Stop
+                Stop-MgDeviceManagementVirtualEndpointCloudPc -CloudPcId $CloudPC.Id -ErrorAction Stop
                 Write-ColorMessage "Stop command sent successfully" -Type Success
-            }
+            }:Enter a comment or description}
+#>
             '3' {
                 Write-ColorMessage "Restarting Cloud PC: $($CloudPC.DisplayName)..." -Type Warning
-                Restart-MgBetaDeviceManagementVirtualEndpointCloudPc -CloudPcId $CloudPC.Id -ErrorAction Stop
+                Restart-MgDeviceManagementVirtualEndpointCloudPc -CloudPcId $CloudPC.Id -ErrorAction Stop
                 Write-ColorMessage "Restart command sent successfully" -Type Success
             }
             '4' {
                 # Refresh details
-                $refreshed = Get-MgBetaDeviceManagementVirtualEndpointCloudPc -CloudPcId $CloudPC.Id -ErrorAction Stop
+                $refreshed = Get-MgBetaDeviceManagementVirtualEndpointCloudPc -Property $props -CloudPcId $CloudPC.Id -ErrorAction Stop
                 Show-CloudPCDetails -CloudPC $refreshed
                 return $refreshed
             }
@@ -396,7 +403,7 @@ function Start-Main {
     param()
     
     try {
-        Clear-Host
+        # Clear-Host
         Write-ColorMessage "=== Windows 365 Cloud PC Management Tool ===" -Type Info
         Write-Host ""
         
