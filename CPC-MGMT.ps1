@@ -490,7 +490,7 @@ function Start-CloudPCManagement {
             
             # Inner loop for selected Cloud PC
             do {
-               # Clear-Host
+               Clear-Host
                 Show-CloudPCDetails -CloudPC $selectedCloudPC
                 Show-ActionMenu
                 
