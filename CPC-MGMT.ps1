@@ -401,7 +401,7 @@ function Start-Main {
     param()
     
     try {
-        # Clear-Host
+        Clear-Host
         Write-ColorMessage "=== Windows 365 Cloud PC Management Tool ===" -Type Info
         Write-Host ""
         
