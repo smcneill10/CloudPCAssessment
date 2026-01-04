@@ -33,8 +33,16 @@ param()
 # Verify required modules are installed (PowerShell will auto-load them when needed)
 $requiredModules = @(
     'Microsoft.Graph.Authentication'
-    'Microsoft.Graph.Beta.DeviceManagement'
     'Microsoft.Graph.DeviceManagement'
+    'Microsoft.Graph.DeviceManagement.Administration'
+    'Microsoft.Graph.DeviceManagement.Enrollment'
+    'Microsoft.Graph.devicemanagement.functions'
+    'Microsoft.Graph.Beta.DeviceManagement'
+    'Microsoft.Graph.Beta.DeviceManagement.Administration'
+    'Microsoft.Graph.Beta.DeviceManagement.Enrollment'
+    'Microsoft.Graph.Beta.DeviceManagement.Functions'
+
+
 )
 
 foreach ($module in $requiredModules) {
