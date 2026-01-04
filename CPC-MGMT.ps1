@@ -111,10 +111,7 @@ function Initialize-GraphConnection {
         Write-ColorMessage "Account: $($context.Account)" -Type Info
         Write-ColorMessage "Tenant: $($context.TenantId)" -Type Info
         Write-Host ""
-       # Get-Module -ListAvailable Microsoft.Graph.Beta.DeviceManagement* | Import-Module
-       # Get-Module -ListAvailable Microsoft.Graph.DeviceManagement* | Import-Module
-        $modules = Get-Module
-        Write-host $modules
+   
         return $true
     }
     catch {
@@ -194,7 +191,7 @@ function Show-CloudPCMenu {
         $index = $i + 1
         $displayName = $cpc.ManagedDeviceName ?? $cpc.DisplayName
         $user = $cpc.UserPrincipalName
-        $powerState = $cpc.PowerState 
+        $powerState = $cpc.PowerState ?? 'N/A'
         $status = $cpc.Status 
         
         # Color code based on power state
@@ -315,8 +312,9 @@ function Invoke-CloudPCAction {
             }
             '4' {
                 # Refresh details
+                 $props = "id,displayName,powerState,status,userPrincipalName,managedDeviceName,servicePlanName,imageDisplayName,provisioningPolicyName,lastModifiedDateTime,gracePeriodEndDateTime"
                 $refreshed = Get-MgBetaDeviceManagementVirtualEndpointCloudPc -Property $props -CloudPcId $CloudPC.Id -ErrorAction Stop
-                Show-CloudPCDetails -CloudPC $refreshed
+                # Show-CloudPCDetails -CloudPC $refreshed
                 return $refreshed
             }
         }
