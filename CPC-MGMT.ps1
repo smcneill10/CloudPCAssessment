@@ -86,6 +86,123 @@ function Write-ColorMessage {
     $color = $script:Config.Colors[$Type]
     Write-Host $Message -ForegroundColor $color
 }
+function Get-UsersWithCloudPC {
+    <#
+    .SYNOPSIS
+        Retrieves all users who have Cloud PCs assigned
+    #>
+    [CmdletBinding()]
+    param()
+    
+    try {
+        Write-ColorMessage "Retrieving users with Cloud PCs..." -Type Info
+        
+        # Get all Cloud PCs
+        $props = "id,displayName,powerState,status,userPrincipalName,managedDeviceName,servicePlanName,imageDisplayName,provisioningPolicyName,lastModifiedDateTime,gracePeriodEndDateTime"
+        $allCloudPCs  = Get-MgBetaDeviceManagementVirtualEndpointCloudPc -property $props -All -ErrorAction Stop
+        
+        if ($null -eq $allCloudPCs -or $allCloudPCs.Count -eq 0) {
+            Write-ColorMessage "No Cloud PCs found in this tenant" -Type Warning
+            return $null
+        }
+        
+        # Group Cloud PCs by user
+        $userGroups = $allCloudPCs | Group-Object -Property UserPrincipalName | 
+            Where-Object { $null -ne $_.Name -and $_.Name -ne '' } |
+            Sort-Object Name
+        
+        if ($userGroups.Count -eq 0) {
+            Write-ColorMessage "No users with Cloud PCs found" -Type Warning
+            return $null
+        }
+        
+        Write-ColorMessage "Found $($userGroups.Count) user(s) with Cloud PCs" -Type Success
+        return $userGroups
+    }
+    catch {
+        Write-ColorMessage "Error retrieving users with Cloud PCs: $_" -Type Error
+        return $null
+    }
+}
+
+function Show-UserSelectionMenu {
+    <#
+    .SYNOPSIS
+        Displays menu for selecting a user with Cloud PCs
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [array]$UserGroups
+    )
+    
+    Write-Host ""
+    Write-ColorMessage "=== Users with Cloud PCs ===" -Type Info
+    Write-Host ""
+    
+    for ($i = 0; $i -lt $UserGroups.Count; $i++) {
+        $userGroup = $UserGroups[$i]
+        $index = $i + 1
+        $userName = $userGroup.Name
+        $cloudPCCount = $userGroup.Count
+        
+        Write-Host "  [$index] " -NoNewline
+        Write-Host "$userName " -ForegroundColor White -NoNewline
+        Write-ColorMessage "($cloudPCCount Cloud PC(s))" -Type Info
+    }
+    
+    Write-Host ""
+    Write-ColorMessage "  [0] Back to main menu" -Type Warning
+    Write-Host ""
+}
+
+function Start-UserCloudPCSelection {
+    <#
+    .SYNOPSIS
+        Allows user to select from users with Cloud PCs and view their Cloud PCs
+    #>
+    [CmdletBinding()]
+    param()
+    
+    try {
+        # Get users with Cloud PCs
+        $userGroups = Get-UsersWithCloudPC
+        if ($null -eq $userGroups) {
+            Start-Sleep -Seconds 2
+            return $null
+        }
+        
+        do {
+            Show-UserSelectionMenu -UserGroups $userGroups
+            
+            $selection = Read-Host "Select a user (0 to go back)"
+            
+            if ($selection -eq '0') {
+                return $null
+            }
+            
+            if ($selection -match '^\d+$' -and [int]$selection -ge 1 -and [int]$selection -le $userGroups.Count) {
+                $selectedIndex = [int]$selection - 1
+                $selectedUserGroup = $userGroups[$selectedIndex]
+                
+                Write-ColorMessage "`nCloud PCs for user: $($selectedUserGroup.Name)" -Type Info
+                Write-Host ""
+                
+                return $selectedUserGroup.Group
+            }
+            else {
+                Write-ColorMessage "Invalid selection. Please try again." -Type Warning
+                Start-Sleep -Seconds 1
+            }
+            
+        } while ($true)
+    }
+    catch {
+        Write-ColorMessage "Error in user selection: $_" -Type Error
+        Start-Sleep -Seconds 2
+        return $null
+    }
+}
 
 function Initialize-GraphConnection {
     <#
