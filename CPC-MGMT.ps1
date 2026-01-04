@@ -282,13 +282,22 @@ function Show-CloudPCMenu {
     Write-ColorMessage "How do you want to locate a Cloud PC:" -Type Info
     Write-Host "  [1] List all Cloud PCs"
     Write-Host "  [2] Search by UserPrincipalName"
+    Write-Host "  [3] List of all Users assigned a Cloud PC"
     Write-Host ""
     $displayOption = Read-Host "Select locate option"
 
     if ($displayOption -eq '2') {
         $searchUPN = Read-Host "Enter UserPrincipalName to search"
         $CloudPCs = @($CloudPCs | Where-Object { $_.UserPrincipalName -like "*$searchUPN*" })
-        
+
+        elseif ($displayOption -eq '3') {
+            $selectedUserCloudPCs = Start-UserCloudPCSelection
+            if ($null -eq $selectedUserCloudPCs) {
+                return
+            }
+            $CloudPCs = @($selectedUserCloudPCs)
+            }
+
         if ($CloudPCs.Count -eq 0) {
             Write-ColorMessage "No Cloud PCs found for user: $searchUPN" -Type Warning
             Start-Sleep -Seconds 2
