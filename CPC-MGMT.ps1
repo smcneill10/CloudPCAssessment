@@ -319,33 +319,35 @@ function Show-CloudPCMenu {
     Write-ColorMessage "=== Available Cloud PCs ===" -Type Info
     Write-Host ""
     
-    for ($i = 0; $i -lt $CloudPCs.Count; $i++) {
+    # Create formatted table data
+    $tableData = for ($i = 0; $i -lt $CloudPCs.Count; $i++) {
         $cpc = $CloudPCs[$i]
         $index = $i + 1
         $displayName = $cpc.ManagedDeviceName ?? $cpc.DisplayName
         $user = $cpc.UserPrincipalName
         $powerState = $cpc.PowerState ?? 'N/A'
-        $status = $cpc.Status 
+        $status = $cpc.Status
         
-        # Color code based on power state
-        
-         $stateColor = switch ($powerState) {
-            'running' { 'Success' }
-            'stopped' { 'Warning' }
-            'poweredOff' { 'Warning' }
-            default { 'Normal' }
+        # Add visual indicator for power state
+        $powerIndicator = switch ($powerState) {
+            'running' { "✓ $powerState" }
+            'stopped' { "⏸ $powerState" }
+            'poweredOff' { "⏸ $powerState" }
+            default { $powerState }
         }
         
-        
-        Write-Host "  [$index] " -NoNewline
-        Write-Host "$displayName " -ForegroundColor White -NoNewline
-        Write-Host "| User: $user " -ForegroundColor Gray -NoNewline
-        Write-Host "| Status: $status " -ForegroundColor Cyan -NoNewline
-       Write-ColorMessage "| Power: $powerState " -Type $stateColor
-     #Write-host "| Power: $powerState" -ForegroundColor Red
+        [PSCustomObject]@{
+            '#'          = $index
+            'Device Name' = $displayName
+            'User'       = $user
+            'Status'     = $status
+            'Power State' = $powerIndicator
+        }
     }
     
-    Write-Host ""
+    # Display the table
+    $tableData | Format-Table -AutoSize
+    
     Write-ColorMessage "  [0] Exit" -Type Warning
     Write-Host ""
 }
@@ -488,7 +490,8 @@ function Start-CloudPCManagement {
             $selectedIndex = [int]$selection - 1
             $selectedCloudPC = $CloudPCs[$selectedIndex]
             
-            # Inner loop for selected Cloud PC
+            # Inner loop for selected Cloud PCget-module
+
             do {
                Clear-Host
                 Show-CloudPCDetails -CloudPC $selectedCloudPC
