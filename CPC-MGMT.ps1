@@ -331,9 +331,15 @@ function Show-CloudPCMenu {
         # Add visual indicator for power state
         $powerIndicator = switch ($powerState) {
             'running' { "✓ $powerState" }
+            'N/A' { "✓ $powerState" }
             'stopped' { "⏸ $powerState" }
             'poweredOff' { "⏸ $powerState" }
             default { $powerState }
+        }
+        
+        # Hide power state for non-provisioned devices
+        if ($status -eq 'notProvisioned') {
+            $powerIndicator = ''
         }
         
         [PSCustomObject]@{
