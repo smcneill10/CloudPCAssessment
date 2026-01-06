@@ -1,0 +1,580 @@
+<#
+.SYNOPSIS
+    Windows 365 Cloud PC Management Tool
+
+.DESCRIPTION
+    Interactive PowerShell tool for managing Windows 365 Cloud PCs using Microsoft Graph API.
+    Supports viewing, starting, stopping, and restarting Cloud PCs with modern best practices.
+
+.NOTES
+    Version:        2.0
+    Author:         Updated for modern best practices
+    Last Updated:   January 2026
+    
+    Requirements:
+    - PowerShell 7.0 or later
+    - Microsoft.Graph.Beta.DeviceManagement.Administration module
+    - Appropriate Microsoft Graph permissions
+
+.LINK
+    https://learn.microsoft.com/en-us/graph/api/resources/cloudpc
+    
+.EXAMPLE
+    .\updateCPCAssessment.ps1
+    Runs the interactive Cloud PC management tool
+#>
+
+#Requires -Version 7.0
+
+[CmdletBinding()]
+param()
+
+#region Module Check
+# Verify required modules are installed (PowerShell will auto-load them when needed)
+$requiredModules = @(
+    'Microsoft.Graph.Authentication'
+    'Microsoft.Graph.DeviceManagement'
+    'Microsoft.Graph.DeviceManagement.Administration'
+    'Microsoft.Graph.DeviceManagement.Enrollment'
+    'Microsoft.Graph.devicemanagement.functions'
+    'Microsoft.Graph.Beta.DeviceManagement'
+    'Microsoft.Graph.Beta.DeviceManagement.Administration'
+    'Microsoft.Graph.Beta.DeviceManagement.Enrollment'
+    'Microsoft.Graph.Beta.DeviceManagement.Functions'
+
+
+)
+
+foreach ($module in $requiredModules) {
+    if (-not (Get-Module -Name $module -ListAvailable)) {
+        Write-Warning "Required module '$module' is not installed."
+        Write-Host "Install it with: Install-Module -Name $module -Scope CurrentUser -Force" -ForegroundColor Yellow
+        exit 1
+    }
+}
+
+Write-Verbose "All required modules are available. PowerShell will auto-load them as needed."
+#endregion
+
+#region Configuration
+$script:Config = @{
+    RequiredScopes = @(
+        'CloudPC.ReadWrite.All'
+        'CloudPC.Read.All'
+        'User.Read.All'
+        'Group.Read.All'
+    )
+    Colors = @{
+        Success = 'Green'
+        Error   = 'Red'
+        Info    = 'Cyan'
+        Warning = 'Yellow'
+        Normal  = 'White'
+    }
+}
+#endregion
+
+#region Helper Functions
+
+function Write-ColorMessage {
+    <#
+    .SYNOPSIS
+        Writes colored messages to the console
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Message,
+        
+        [Parameter()]
+        [ValidateSet('Success', 'Error', 'Info', 'Warning', 'Normal')]
+        [string]$Type = 'Normal'
+    )
+    
+    $color = $script:Config.Colors[$Type]
+    Write-Host $Message -ForegroundColor $color
+}
+function Get-UsersWithCloudPC {
+    <#
+    .SYNOPSIS
+        Retrieves all users who have Cloud PCs assigned
+    #>
+    [CmdletBinding()]
+    param()
+    
+    try {
+        Write-ColorMessage "Retrieving users with Cloud PCs..." -Type Info
+        
+        # Get all Cloud PCs
+        $props = "id,displayName,powerState,status,userPrincipalName,managedDeviceName,servicePlanName,imageDisplayName,provisioningPolicyName,lastModifiedDateTime,gracePeriodEndDateTime"
+        $allCloudPCs  = Get-MgBetaDeviceManagementVirtualEndpointCloudPc -property $props -All -ErrorAction Stop
+        
+        if ($null -eq $allCloudPCs -or $allCloudPCs.Count -eq 0) {
+            Write-ColorMessage "No Cloud PCs found in this tenant" -Type Warning
+            return $null
+        }
+        
+        # Group Cloud PCs by user
+        $userGroups = $allCloudPCs | Group-Object -Property UserPrincipalName | 
+            Where-Object { $null -ne $_.Name -and $_.Name -ne '' } |
+            Sort-Object Name
+        
+        if ($userGroups.Count -eq 0) {
+            Write-ColorMessage "No users with Cloud PCs found" -Type Warning
+            return $null
+        }
+        
+        Write-ColorMessage "Found $($userGroups.Count) user(s) with Cloud PCs" -Type Success
+        return $userGroups
+    }
+    catch {
+        Write-ColorMessage "Error retrieving users with Cloud PCs: $_" -Type Error
+        return $null
+    }
+}
+
+function Show-UserSelectionMenu {
+    <#
+    .SYNOPSIS
+        Displays menu for selecting a user with Cloud PCs
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [array]$UserGroups
+    )
+    
+    Write-Host ""
+    Write-ColorMessage "=== Users with Cloud PCs ===" -Type Info
+    Write-Host ""
+    
+    for ($i = 0; $i -lt $UserGroups.Count; $i++) {
+        $userGroup = $UserGroups[$i]
+        $index = $i + 1
+        $userName = $userGroup.Name
+        $cloudPCCount = $userGroup.Count
+        
+        Write-Host "  [$index] " -NoNewline
+        Write-Host "$userName " -ForegroundColor White -NoNewline
+        Write-ColorMessage "($cloudPCCount Cloud PC(s))" -Type Info
+    }
+    
+    Write-Host ""
+    Write-ColorMessage "  [0] Back to main menu" -Type Warning
+    Write-Host ""
+}
+
+function Start-UserCloudPCSelection {
+    <#
+    .SYNOPSIS
+        Allows user to select from users with Cloud PCs and view their Cloud PCs
+    #>
+    [CmdletBinding()]
+    param()
+    
+    try {
+        # Get users with Cloud PCs
+        $userGroups = Get-UsersWithCloudPC
+        if ($null -eq $userGroups) {
+            Start-Sleep -Seconds 2
+            return $null
+        }
+        
+        do {
+            Show-UserSelectionMenu -UserGroups $userGroups
+            
+            $selection = Read-Host "Select a user (0 to go back)"
+            
+            if ($selection -eq '0') {
+                return $null
+            }
+            
+            if ($selection -match '^\d+$' -and [int]$selection -ge 1 -and [int]$selection -le $userGroups.Count) {
+                $selectedIndex = [int]$selection - 1
+                $selectedUserGroup = $userGroups[$selectedIndex]
+                
+                Write-ColorMessage "`nCloud PCs for user: $($selectedUserGroup.Name)" -Type Info
+                Write-Host ""
+                
+                return $selectedUserGroup.Group
+            }
+            else {
+                Write-ColorMessage "Invalid selection. Please try again." -Type Warning
+                Start-Sleep -Seconds 1
+            }
+            
+        } while ($true)
+    }
+    catch {
+        Write-ColorMessage "Error in user selection: $_" -Type Error
+        Start-Sleep -Seconds 2
+        return $null
+    }
+}
+
+function Initialize-GraphConnection {
+    <#
+    .SYNOPSIS
+        Initializes and validates Microsoft Graph connection
+    #>
+    [CmdletBinding()]
+    param()
+    
+    try {
+        Write-ColorMessage "Connecting to Microsoft Graph..." -Type Info
+        
+        # Connect with required scopes
+        Connect-MgGraph -Scopes $script:Config.RequiredScopes -NoWelcome -ErrorAction Stop
+        
+        # Verify connection
+        $context = Get-MgContext
+        if ($null -eq $context) {
+            throw "Failed to establish Graph connection"
+        }
+        
+        Write-ColorMessage "Successfully connected to Microsoft Graph" -Type Success
+        Write-ColorMessage "Account: $($context.Account)" -Type Info
+        Write-ColorMessage "Tenant: $($context.TenantId)" -Type Info
+        Write-Host ""
+   
+        return $true
+    }
+    catch {
+        Write-ColorMessage "Error connecting to Microsoft Graph: $_" -Type Error
+        return $false
+    }
+}
+
+function Get-CloudPCList {
+    <#
+    .SYNOPSIS
+        Retrieves all Cloud PCs with comprehensive properties
+    #>
+    [CmdletBinding()]
+    param()
+    
+    try {
+        Write-ColorMessage "Retrieving Cloud PCs..." -Type Info
+        
+        # Using Beta API for full feature set (PowerState, Status, etc.)
+        $props = "id,displayName,powerState,status,userPrincipalName,managedDeviceName,servicePlanName,imageDisplayName,provisioningPolicyName,lastModifiedDateTime,gracePeriodEndDateTime"
+        $cloudPCs = Get-MgBetaDeviceManagementVirtualEndpointCloudPc -property $props -All -ErrorAction Stop
+        
+        if ($null -eq $cloudPCs -or $cloudPCs.Count -eq 0) {
+            Write-ColorMessage "No Cloud PCs found in this tenant" -Type Warning
+            return $null
+        }
+        
+        Write-ColorMessage "Found $($cloudPCs.Count) Cloud PC(s)" -Type Success
+        return $cloudPCs
+    }
+    catch {
+        Write-ColorMessage "Error retrieving Cloud PCs: $_" -Type Error
+        return $null
+    }
+}
+
+function Show-CloudPCMenu {
+    <#
+    .SYNOPSIS
+        Displays the Cloud PC selection menu
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [array]$CloudPCs
+    )
+    
+    Write-Host ""
+    # Prompt user for list or search option
+    Write-ColorMessage "How do you want to locate a Cloud PC:" -Type Info
+    Write-Host "  [1] List all Cloud PCs"
+    Write-Host "  [2] Search by UserPrincipalName"
+    Write-Host "  [3] List of all Users assigned a Cloud PC"
+    Write-Host ""
+    $displayOption = Read-Host "Select locate option"
+
+    if ($displayOption -eq '2') {
+        $searchUPN = Read-Host "Enter UserPrincipalName to search"
+        $CloudPCs = @($CloudPCs | Where-Object { $_.UserPrincipalName -like "*$searchUPN*" })
+
+        if ($CloudPCs.Count -eq 0) {
+            Write-ColorMessage "No Cloud PCs found for user: $searchUPN" -Type Warning
+            Start-Sleep -Seconds 2
+            return
+        }
+        
+        Write-ColorMessage "Found $($CloudPCs.Count) Cloud PC(s) for search: $searchUPN" -Type Success
+
+        Write-Host ""
+    }
+    elseif ($displayOption -eq '3') {
+        $selectedUserCloudPCs = Start-UserCloudPCSelection
+        if ($null -eq $selectedUserCloudPCs) {
+            return
+        }
+        $CloudPCs = @($selectedUserCloudPCs)
+    }
+
+    Write-ColorMessage "=== Available Cloud PCs ===" -Type Info
+    Write-Host ""
+    
+    # Create formatted table data
+    $tableData = for ($i = 0; $i -lt $CloudPCs.Count; $i++) {
+        $cpc = $CloudPCs[$i]
+        $index = $i + 1
+        $displayName = $cpc.ManagedDeviceName ?? $cpc.DisplayName
+        $user = $cpc.UserPrincipalName
+        $powerState = $cpc.PowerState ?? 'N/A'
+        $status = $cpc.Status
+        
+        # Add visual indicator for power state
+        $powerIndicator = switch ($powerState) {
+            'running' { "✓ $powerState" }
+            'N/A' { "✓ $powerState" }
+            'stopped' { "⏸ $powerState" }
+            'poweredOff' { "⏸ $powerState" }
+            default { $powerState }
+        }
+        
+        # Hide power state for non-provisioned devices
+        if ($status -eq 'notProvisioned') {
+            $powerIndicator = ''
+        }
+        
+        [PSCustomObject]@{
+            '#'          = $index
+            'Device Name' = $displayName
+            'User'       = $user
+            'Status'     = $status
+            'Power State' = $powerIndicator
+        }
+    }
+    
+    # Display the table
+    $tableData | Format-Table -AutoSize
+    
+    Write-ColorMessage "  [0] Exit" -Type Warning
+    Write-Host ""
+}
+
+function Show-CloudPCDetails {
+    <#
+    .SYNOPSIS
+        Displays detailed information about a specific Cloud PC
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object]$CloudPC
+    )
+    
+    Write-Host ""
+    Write-ColorMessage "=== Cloud PC Details ===" -Type Info
+    Write-Host ""
+    
+    $details = [ordered]@{
+        'Display Name'           = $CloudPC.DisplayName
+        'User Principal Name'    = $CloudPC.UserPrincipalName
+        'Managed Device Name'    = $CloudPC.ManagedDeviceName
+        'Cloud PC ID'            = $CloudPC.Id
+        'Status'                 = $CloudPC.Status
+        'Power State'            = $CloudPC.PowerState
+        'Service Plan'           = $CloudPC.ServicePlanName
+        'Provisioning Policy'    = $CloudPC.ProvisioningPolicyName
+        'Image Name'             = $CloudPC.ImageDisplayName
+        'Last Modified'          = $CloudPC.LastModifiedDateTime
+        'Grace Period End'       = $CloudPC.GracePeriodEndDateTime
+    }
+    
+    foreach ($key in $details.Keys) {
+        $value = $details[$key] ?? 'N/A'
+        Write-Host "  " -NoNewline
+        Write-Host "$key" -ForegroundColor Cyan -NoNewline
+        Write-Host ": " -NoNewline
+        Write-Host "$value" -ForegroundColor White
+    }
+    
+    Write-Host ""
+}
+
+function Show-ActionMenu {
+    <#
+    .SYNOPSIS
+        Displays the action menu for a selected Cloud PC
+    #>
+    [CmdletBinding()]
+    param()
+    
+    Write-ColorMessage "=== Available Actions ===" -Type Info
+    Write-Host ""
+    Write-Host "  [1] Start Cloud PC"
+   # Write-Host "  [2] Stop Cloud PC"
+    Write-Host "  [2] Feature currently not available"
+    Write-Host "  [3] Restart Cloud PC"
+    Write-Host "  [4] Refresh Details"
+    Write-Host "  [5] Back to Cloud PC List"
+    Write-Host "  [0] Exit"
+    Write-Host ""
+}
+
+function Invoke-CloudPCAction {
+    <#
+    .SYNOPSIS
+        Executes the selected action on a Cloud PC
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string]$Action,
+        
+        [Parameter(Mandatory)]
+        [object]$CloudPC
+    )
+    
+    try {
+        switch ($Action) {
+            '1' {
+                Write-ColorMessage "Starting Cloud PC: $($CloudPC.DisplayName)..." -Type Info
+                Restart-MgDeviceManagementVirtualEndpointCloudPc -CloudPcId $CloudPC.Id -ErrorAction Stop
+                Write-ColorMessage "Start command sent successfully" -Type Success
+            }
+<#
+ # {            '2' {
+                Write-ColorMessage "Stopping Cloud PC: $($CloudPC.DisplayName)..." -Type Warning
+                Stop-MgDeviceManagementVirtualEndpointCloudPc -CloudPcId $CloudPC.Id -ErrorAction Stop
+                Write-ColorMessage "Stop command sent successfully" -Type Success
+            }:Enter a comment or description}
+#>
+            '3' {
+                Write-ColorMessage "Restarting Cloud PC: $($CloudPC.DisplayName)..." -Type Warning
+                Restart-MgDeviceManagementVirtualEndpointCloudPc -CloudPcId $CloudPC.Id -ErrorAction Stop
+                Write-ColorMessage "Restart command sent successfully" -Type Success
+            }
+            '4' {
+                # Refresh details
+                 $props = "id,displayName,powerState,status,userPrincipalName,managedDeviceName,servicePlanName,imageDisplayName,provisioningPolicyName,lastModifiedDateTime,gracePeriodEndDateTime"
+                $refreshed = Get-MgBetaDeviceManagementVirtualEndpointCloudPc -Property $props -CloudPcId $CloudPC.Id -ErrorAction Stop
+                # Show-CloudPCDetails -CloudPC $refreshed
+                return $refreshed
+            }
+        }
+        
+        Start-Sleep -Seconds 2
+        return $CloudPC
+    }
+    catch {
+        Write-ColorMessage "Error executing action: $_" -Type Error
+        Start-Sleep -Seconds 2
+        return $CloudPC
+    }
+}
+
+function Start-CloudPCManagement {
+    <#
+    .SYNOPSIS
+        Main management loop for Cloud PC operations
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [array]$CloudPCs
+    )
+    
+    do {
+        #Clear-Host
+        Show-CloudPCMenu -CloudPCs $CloudPCs
+        
+        $selection = Read-Host "Select a Cloud PC (0 to exit)"
+        
+        if ($selection -eq '0') {
+            Write-ColorMessage "Exiting..." -Type Info
+            break
+        }
+        
+        if ($selection -match '^\d+$' -and [int]$selection -ge 1 -and [int]$selection -le $CloudPCs.Count) {
+            $selectedIndex = [int]$selection - 1
+            $selectedCloudPC = $CloudPCs[$selectedIndex]
+            
+            # Inner loop for selected Cloud PCget-module
+
+            do {
+               Clear-Host
+                Show-CloudPCDetails -CloudPC $selectedCloudPC
+                Show-ActionMenu
+                
+                $actionSelection = Read-Host "Select an action"
+                
+                if ($actionSelection -eq '0') {
+                    Write-ColorMessage "Exiting..." -Type Info
+                    return
+                }
+                elseif ($actionSelection -eq '5') {
+                    break  # Back to Cloud PC list
+                }
+                elseif ($actionSelection -in @('1', '2', '3', '4')) {
+                    $selectedCloudPC = Invoke-CloudPCAction -Action $actionSelection -CloudPC $selectedCloudPC
+                }
+                else {
+                    Write-ColorMessage "Invalid selection. Please try again." -Type Warning
+                    Start-Sleep -Seconds 1
+                }
+                
+            } while ($true)
+        }
+        else {
+            Write-ColorMessage "Invalid selection. Please try again." -Type Warning
+            Start-Sleep -Seconds 1
+        }
+        
+    } while ($true)
+}
+
+#endregion
+
+#region Main Execution
+
+function Start-Main {
+    <#
+    .SYNOPSIS
+        Main entry point for the script
+    #>
+    [CmdletBinding()]
+    param()
+    
+    try {
+        Clear-Host
+        Write-ColorMessage "=== Windows 365 Cloud PC Management Tool ===" -Type Info
+        Write-Host ""
+        
+        # Initialize Graph connection
+        if (-not (Initialize-GraphConnection)) {
+            Write-ColorMessage "Unable to proceed without Graph connection" -Type Error
+            return
+        }
+        
+        # Get Cloud PCs
+        $cloudPCs = Get-CloudPCList
+        if ($null -eq $cloudPCs) {
+            Write-ColorMessage "No Cloud PCs available to manage" -Type Warning
+            return
+        }
+        
+        # Start management interface
+        Start-CloudPCManagement -CloudPCs $cloudPCs
+        
+        Write-ColorMessage "Thank you for using the Cloud PC Management Tool!" -Type Success
+    }
+    catch {
+        Write-ColorMessage "An unexpected error occurred: $_" -Type Error
+    }
+    finally {
+        # Cleanup if needed
+        Write-Verbose "Script execution completed"
+    }
+}
+
+# Execute main function
+Start-Main
+
+#endregion
