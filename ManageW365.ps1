@@ -7,7 +7,7 @@
     Supports viewing, starting, stopping, and restarting Cloud PCs with modern best practices.
 
 .NOTES
-    Version:        2.0
+    Version:        2.1
     Author:         Updated for modern best practices
     Last Updated:   January 2026
     
