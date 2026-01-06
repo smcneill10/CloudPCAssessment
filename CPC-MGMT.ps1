@@ -413,9 +413,80 @@ function Show-ActionMenu {
     Write-Host "  [2] Feature currently not available"
     Write-Host "  [3] Restart Cloud PC"
     Write-Host "  [4] Refresh Details"
-    Write-Host "  [5] Back to Cloud PC List"
+    Write-Host "  [5] View Connection Health Report"
+    Write-Host "  [6] Back to Cloud PC List"
     Write-Host "  [0] Exit"
     Write-Host ""
+}
+
+function Show-CloudPCConnectionHealth {
+    <#
+    .SYNOPSIS
+        Displays connection health report for a Cloud PC
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object]$CloudPC
+    )
+    
+    try {
+        Write-ColorMessage "Retrieving connection health history for: $($CloudPC.DisplayName)..." -Type Info
+        Write-Host ""
+        
+        $connectivityHistory = Get-MgBetaDeviceManagementVirtualEndpointCloudPcConnectivityHistory -CloudPcId $CloudPC.Id -ErrorAction Stop
+        
+        if ($null -eq $connectivityHistory -or $connectivityHistory.Count -eq 0) {
+            Write-ColorMessage "No connectivity history found for this Cloud PC" -Type Warning
+            Start-Sleep -Seconds 2
+            return
+        }
+        
+        Write-ColorMessage "=== Connection Health Report ===" -Type Info
+        Write-Host ""
+        Write-ColorMessage "Cloud PC: $($CloudPC.DisplayName)" -Type Info
+        Write-ColorMessage "User: $($CloudPC.UserPrincipalName)" -Type Info
+        Write-Host ""
+        Write-ColorMessage "Total Connection Events: $($connectivityHistory.Count)" -Type Success
+        Write-Host ""
+        
+        # Display connectivity events in a formatted table
+        $connectivityHistory | Sort-Object -Property EventDateTime -Descending | Select-Object -First 20 | ForEach-Object {
+            $event = $_
+            
+            Write-ColorMessage "─────────────────────────────────────────────" -Type Info
+            Write-Host "  Event Date/Time: " -NoNewline
+            Write-Host "$($event.EventDateTime)" -ForegroundColor White
+            
+            Write-Host "  Event Type: " -NoNewline
+            Write-Host "$($event.EventType)" -ForegroundColor White
+            
+            if ($event.HealthCheckStatus) {
+                Write-Host "  Health Status: " -NoNewline
+                $statusColor = if ($event.HealthCheckStatus -eq 'passed') { 'Green' } else { 'Red' }
+                Write-Host "$($event.HealthCheckStatus)" -ForegroundColor $statusColor
+            }
+            
+            if ($event.FailureDetails) {
+                Write-Host "  Failure Details: " -NoNewline
+                Write-Host "$($event.FailureDetails)" -ForegroundColor Red
+            }
+            
+            Write-Host ""
+        }
+        
+        if ($connectivityHistory.Count -gt 20) {
+            Write-ColorMessage "(Showing most recent 20 of $($connectivityHistory.Count) events)" -Type Warning
+        }
+        
+        Write-Host ""
+        Write-ColorMessage "Press any key to continue..." -Type Info
+        $null = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    }
+    catch {
+        Write-ColorMessage "Error retrieving connection health: $_" -Type Error
+        Start-Sleep -Seconds 2
+    }
 }
 
 function Invoke-CloudPCAction {
@@ -457,6 +528,11 @@ function Invoke-CloudPCAction {
                 $refreshed = Get-MgBetaDeviceManagementVirtualEndpointCloudPc -Property $props -CloudPcId $CloudPC.Id -ErrorAction Stop
                 # Show-CloudPCDetails -CloudPC $refreshed
                 return $refreshed
+            }
+            '5' {
+                # Show connection health report
+                Show-CloudPCConnectionHealth -CloudPC $CloudPC
+                return $CloudPC
             }
         }
         
@@ -509,10 +585,10 @@ function Start-CloudPCManagement {
                     Write-ColorMessage "Exiting..." -Type Info
                     return
                 }
-                elseif ($actionSelection -eq '5') {
+                elseif ($actionSelection -eq '6') {
                     break  # Back to Cloud PC list
                 }
-                elseif ($actionSelection -in @('1', '2', '3', '4')) {
+                elseif ($actionSelection -in @('1', '2', '3', '4', '5')) {
                     $selectedCloudPC = Invoke-CloudPCAction -Action $actionSelection -CloudPC $selectedCloudPC
                 }
                 else {
